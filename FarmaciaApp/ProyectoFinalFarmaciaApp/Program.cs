@@ -1,16 +1,11 @@
 ﻿using ProyectoFinalFarmaciaApp.Data;
-using ProyectoFinalFarmaciaApp.Data.Entities;
-using Microsoft.EntityFrameworkCore;
+using ProyectoFinalFarmaciaApp.Services;
+using ProyectoFinalFarmaciaApp.Reports;
 
 try
 {
     var dataContext = new DataContext();
-    List<Laboratory> laboratories = new List<Laboratory>();
-    laboratories = dataContext.Laboratories.ToList();
-    List<Medication> medications = new List<Medication>();
-    medications = dataContext.Medications.Include(m => m.Laboratory).ToList();
-    List<Batch> batches = new List<Batch>();
-    batches = dataContext.Batches.Include(b => b.Medication).ToList();
+    var pharmacyService = new PharmacyService(dataContext);
 
     int typeOption;
     bool exitApp = false;
@@ -36,24 +31,16 @@ try
             case 1:
                 Console.Write("Enter laboratory name: ");
                 string labName = Console.ReadLine();
-
-                if (string.IsNullOrWhiteSpace(labName))
-                {
-                    Console.WriteLine("Laboratory name cannot be empty");
-                    break;
-                }
-
                 Console.Write("Enter country: ");
                 string labCountry = Console.ReadLine();
 
-                Laboratory newLaboratory = new Laboratory { Name = labName, Country = labCountry };
-                dataContext.Laboratories.Add(newLaboratory);
-                dataContext.SaveChanges();
-                laboratories.Add(newLaboratory);
-                Console.WriteLine("Laboratory added successfully");
+                bool laboratoryAdded = pharmacyService.AddLaboratory(labName, labCountry);
+                Console.WriteLine(laboratoryAdded ? "Laboratory added successfully" : "Invalid laboratory data");
                 break;
 
             case 2:
+                var laboratories = pharmacyService.GetLaboratories();
+
                 if (laboratories.Count == 0)
                 {
                     Console.WriteLine("No laboratories available");
@@ -67,41 +54,21 @@ try
 
                 Console.Write("Enter laboratory id: ");
                 int laboratoryId;
-                bool validLabId = int.TryParse(Console.ReadLine(), out laboratoryId);
-
-                if (!validLabId || !laboratories.Any(l => l.Id == laboratoryId))
-                {
-                    Console.WriteLine("Invalid laboratory id");
-                    break;
-                }
+                int.TryParse(Console.ReadLine(), out laboratoryId);
 
                 Console.Write("Enter medication name: ");
                 string medName = Console.ReadLine();
-
-                if (string.IsNullOrWhiteSpace(medName))
-                {
-                    Console.WriteLine("Medication name cannot be empty");
-                    break;
-                }
-
                 Console.Write("Enter price: ");
                 decimal medPrice;
-                bool validPrice = decimal.TryParse(Console.ReadLine(), out medPrice);
+                decimal.TryParse(Console.ReadLine(), out medPrice);
 
-                if (!validPrice || medPrice < 0)
-                {
-                    Console.WriteLine("Invalid price");
-                    break;
-                }
-
-                Medication newMedication = new Medication { Name = medName, Price = medPrice, LaboratoryId = laboratoryId };
-                dataContext.Medications.Add(newMedication);
-                dataContext.SaveChanges();
-                medications.Add(newMedication);
-                Console.WriteLine("Medication added successfully");
+                bool medicationAdded = pharmacyService.AddMedication(medName, medPrice, laboratoryId);
+                Console.WriteLine(medicationAdded ? "Medication added successfully" : "Invalid medication data");
                 break;
 
             case 3:
+                var medications = pharmacyService.GetMedications();
+
                 if (medications.Count == 0)
                 {
                     Console.WriteLine("No medications available");
@@ -115,65 +82,37 @@ try
 
                 Console.Write("Enter medication id: ");
                 int medicationId;
-                bool validMedId = int.TryParse(Console.ReadLine(), out medicationId);
-
-                if (!validMedId || !medications.Any(m => m.Id == medicationId))
-                {
-                    Console.WriteLine("Invalid medication id");
-                    break;
-                }
+                int.TryParse(Console.ReadLine(), out medicationId);
 
                 Console.Write("Enter batch number: ");
                 string batchNumber = Console.ReadLine();
 
-                if (string.IsNullOrWhiteSpace(batchNumber))
-                {
-                    Console.WriteLine("Batch number cannot be empty");
-                    break;
-                }
-
                 Console.Write("Enter quantity: ");
                 int quantity;
-                bool validQuantity = int.TryParse(Console.ReadLine(), out quantity);
-
-                if (!validQuantity || quantity < 0)
-                {
-                    Console.WriteLine("Invalid quantity");
-                    break;
-                }
+                int.TryParse(Console.ReadLine(), out quantity);
 
                 Console.Write("Enter expiration date (yyyy-MM-dd): ");
-                DateTime expirationDate;
-                bool validDate = DateTime.TryParse(Console.ReadLine(), out expirationDate);
+                string expirationDateText = Console.ReadLine();
 
-                if (!validDate)
-                {
-                    Console.WriteLine("Invalid date format");
-                    break;
-                }
-
-                Batch newBatch = new Batch { BatchNumber = batchNumber, MedicationId = medicationId, Quantity = quantity, ExpirationDate = expirationDate };
-                dataContext.Batches.Add(newBatch);
-                dataContext.SaveChanges();
-                batches.Add(newBatch);
-                Console.WriteLine("Batch added successfully");
+                bool batchAdded = pharmacyService.AddBatch(batchNumber, medicationId, quantity, expirationDateText);
+                Console.WriteLine(batchAdded ? "Batch added successfully" : "Invalid batch data");
                 break;
 
             case 4:
-                foreach (var med in medications)
-                {
-                    Console.WriteLine($"{med.Id}    {med.Name}    {med.Laboratory.Name}    {med.Price}");
-                }
+                var medicationReport = new MedicationReport(pharmacyService.GetMedications());
+                medicationReport.PrintReport();
                 break;
 
             case 5:
-                foreach (var batch in batches)
+                foreach (var batch in pharmacyService.GetBatches())
                 {
                     Console.WriteLine($"{batch.Id}    {batch.BatchNumber}    {batch.Medication.Name}    {batch.Quantity}    {batch.ExpirationDate.ToShortDateString()}");
                 }
                 break;
 
             case 6:
+                var batches = pharmacyService.GetBatches();
+
                 if (batches.Count == 0)
                 {
                     Console.WriteLine("No batches available");
@@ -187,42 +126,19 @@ try
 
                 Console.Write("Enter batch id: ");
                 int batchId;
-                bool validBatchId = int.TryParse(Console.ReadLine(), out batchId);
-                Batch batchToUpdate = batches.FirstOrDefault(b => b.Id == batchId);
-
-                if (!validBatchId || batchToUpdate == null)
-                {
-                    Console.WriteLine("Invalid batch id");
-                    break;
-                }
+                int.TryParse(Console.ReadLine(), out batchId);
 
                 Console.Write("Enter new quantity: ");
                 int newQuantity;
-                bool validNewQuantity = int.TryParse(Console.ReadLine(), out newQuantity);
+                int.TryParse(Console.ReadLine(), out newQuantity);
 
-                if (!validNewQuantity || newQuantity < 0)
-                {
-                    Console.WriteLine("Invalid quantity");
-                    break;
-                }
-
-                batchToUpdate.Quantity = newQuantity;
-                dataContext.SaveChanges();
-                Console.WriteLine("Stock updated successfully");
+                bool stockUpdated = pharmacyService.UpdateStock(batchId, newQuantity);
+                Console.WriteLine(stockUpdated ? "Stock updated successfully" : "Invalid batch id or quantity");
                 break;
 
             case 7:
-                Console.WriteLine("Expired batches:");
-                foreach (var batch in batches.Where(b => b.ExpirationDate < DateTime.Now))
-                {
-                    Console.WriteLine($"{batch.Id}    {batch.BatchNumber}    {batch.Medication.Name}    {batch.ExpirationDate.ToShortDateString()}    EXPIRED");
-                }
-
-                Console.WriteLine("Batches close to expiration (next 30 days):");
-                foreach (var batch in batches.Where(b => b.ExpirationDate >= DateTime.Now && b.ExpirationDate <= DateTime.Now.AddDays(30)))
-                {
-                    Console.WriteLine($"{batch.Id}    {batch.BatchNumber}    {batch.Medication.Name}    {batch.ExpirationDate.ToShortDateString()}    CLOSE TO EXPIRATION");
-                }
+                var expirationReport = new ExpirationReport(pharmacyService.GetBatches(), 30);
+                expirationReport.PrintReport();
                 break;
 
             case 8:

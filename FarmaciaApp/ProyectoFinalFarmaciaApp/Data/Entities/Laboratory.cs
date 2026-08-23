@@ -6,5 +6,15 @@
         public string Name { get; set; }
         public string Country { get; set; }
         public ICollection<Medication> Medications { get; set; }
+
+        public Laboratory()
+        {
+        }
+
+        public Laboratory(string name, string country)
+        {
+            Name = name;
+            Country = country;
+        }
     }
 }

@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace ProyectoFinalFarmaciaApp.Data.Entities
+﻿namespace ProyectoFinalFarmaciaApp.Data.Entities
 {
     public class Medication
     {
@@ -10,5 +8,16 @@ namespace ProyectoFinalFarmaciaApp.Data.Entities
         public int LaboratoryId { get; set; }
         public Laboratory Laboratory { get; set; }
         public ICollection<Batch> Batches { get; set; }
+
+        public Medication()
+        {
+        }
+
+        public Medication(string name, decimal price, int laboratoryId)
+        {
+            Name = name;
+            Price = price;
+            LaboratoryId = laboratoryId;
+        }
     }
 }
